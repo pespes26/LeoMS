@@ -31,6 +31,7 @@ FROM amazoncorretto:21
 
 # Host the server in a location that won't have permissions issues.
 WORKDIR /opt/server
+RUN mkdir -p /opt/server/logs && chown -R 10001:10001 /opt/server
 # Copy the wizet files first since they're so big and won't change often.
 COPY wz ./wz
 # Copy the JAR we build earlier.
@@ -42,7 +43,7 @@ COPY config.yaml ./
 # Default exposure, although not required if using docker compose.
 # This exposes the login server, and channels.
 # Format for channels: WWCC, where WW is 75 plus the world number and CC is 75 plus the channel number (both zero indexed).
-EXPOSE 8484 7575 7576 7577
+EXPOSE 8484 7575 7576
+USER 10001:10001
 ENTRYPOINT ["java", "-jar", "./Server.jar"]
-
 

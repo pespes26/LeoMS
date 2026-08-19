@@ -22,6 +22,11 @@ public class YamlConfig {
             YamlReader reader = new YamlReader(Files.newBufferedReader(Path.of(CONFIG_FILE_NAME), CharsetConstants.CHARSET));
             YamlConfig config = reader.read(YamlConfig.class);
             reader.close();
+            String advertisedHost = System.getenv("LEOMS_ADVERTISED_HOST");
+            if (advertisedHost != null && !advertisedHost.isBlank()) {
+                config.server.HOST = advertisedHost;
+                config.server.LANHOST = advertisedHost;
+            }
             return config;
         } catch (FileNotFoundException e) {
             throw new RuntimeException("Could not read config file " + YamlConfig.CONFIG_FILE_NAME + ": " + e.getMessage());

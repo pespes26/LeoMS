@@ -1,0 +1,8 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Accounts — LeoMS</title><link rel="stylesheet" th:href="@{/css/admin.css}"></head>
+<body><header><a class="brand" th:href="@{/}">LeoMS admin</a><nav><a th:href="@{/accounts/new}">Create account</a><form th:action="@{/logout}" method="post"><button class="link">Sign out</button></form></nav></header><main>
+<h1>Accounts and characters</h1><form class="search" method="get" th:action="@{/accounts}"><label>Username or character name<input name="q" th:value="${query}" maxlength="32" autofocus></label><button>Search</button></form>
+<div class="table-wrap" th:if="${!#lists.isEmpty(accounts)}"><table><thead><tr><th>Account</th><th>Status</th><th>Created</th><th>Last login</th></tr></thead><tbody><tr th:each="account : ${accounts}"><td><a th:href="@{/accounts/{id}(id=${account.id})}" th:text="${account.name}"></a></td><td th:text="${account.banned ? 'Banned' : 'Active'}"></td><td th:text="${account.createdAt}"></td><td th:text="${account.lastLogin}"></td></tr></tbody></table></div>
+<p class="muted" th:if="${!#strings.isEmpty(query) and #lists.isEmpty(accounts)}">No matching account or character.</p>
+</main></body></html>

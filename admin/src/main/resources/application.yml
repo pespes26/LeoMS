@@ -1,0 +1,42 @@
+server:
+  port: 8080
+  shutdown: graceful
+  servlet:
+    session:
+      timeout: 15m
+      cookie:
+        name: LEOMS_ADMIN_SESSION
+        http-only: true
+        secure: true
+        same-site: strict
+spring:
+  application:
+    name: leoms-admin
+  thymeleaf:
+    cache: true
+  datasource:
+    hikari:
+      maximum-pool-size: 4
+      minimum-idle: 1
+      connection-timeout: 5000
+management:
+  server:
+    port: 9090
+    address: 127.0.0.1
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+leoms:
+  db:
+    url: ${LEOMS_DB_URL:jdbc:mysql://localhost:3306/cosmic}
+    user: ${LEOMS_DB_USER:leoms_admin}
+    password-file: ${LEOMS_DB_PASSWORD_FILE:}
+  admin:
+    username: ${LEOMS_ADMIN_USERNAME:owner}
+    password-hash-file: ${LEOMS_ADMIN_PASSWORD_HASH_FILE:}
+  logs:
+    directory: ${LEOMS_LOG_DIRECTORY:/var/log/leoms}

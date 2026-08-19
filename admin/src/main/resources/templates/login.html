@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>LeoMS admin</title><link rel="stylesheet" th:href="@{/css/admin.css}"></head>
+<body class="login-page">
+<main class="login-card">
+  <h1>LeoMS</h1><p class="muted">Private operator console</p>
+  <p class="alert error" th:if="${param.error}">Invalid username or password.</p>
+  <p class="alert" th:if="${param.logout}">You signed out.</p>
+  <p class="alert error" th:if="${param.expired}">Your session expired. Sign in again.</p>
+  <form th:action="@{/login}" method="post">
+    <label>Username<input name="username" autocomplete="username" required autofocus></label>
+    <label>Password<input type="password" name="password" autocomplete="current-password" required></label>
+    <button type="submit">Sign in</button>
+  </form>
+</main>
+</body></html>

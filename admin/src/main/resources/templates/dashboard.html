@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>LeoMS dashboard</title><link rel="stylesheet" th:href="@{/css/admin.css}"></head>
+<body><header><a class="brand" th:href="@{/}">LeoMS admin</a><nav><a th:href="@{/accounts}">Accounts</a><a th:href="@{/accounts/new}">Create account</a><form th:action="@{/logout}" method="post"><button class="link" type="submit">Sign out</button></form></nav></header>
+<main>
+  <p class="alert" th:if="${message}" th:text="${message}"></p><p class="alert error" th:if="${error}" th:text="${error}"></p>
+  <h1>Operations</h1>
+  <section><h2>Health</h2><dl class="status"><th:block th:each="entry : ${status}"><dt th:text="${entry.key}"></dt><dd th:text="${entry.value}"></dd></th:block></dl></section>
+  <section><div class="section-heading"><h2>Backups</h2><form th:action="@{/backups/request}" method="post"><button type="submit">Request backup</button></form></div>
+    <div class="table-wrap"><table><thead><tr><th>ID</th><th>Requested</th><th>By</th><th>State</th><th>Finished</th><th>Snapshot / message</th></tr></thead><tbody>
+      <tr th:each="job : ${backups}"><td th:text="${job.id}"></td><td th:text="${job.requestedAt}"></td><td th:text="${job.requestedBy}"></td><td><span class="badge" th:text="${job.state}"></span></td><td th:text="${job.finishedAt}"></td><td th:text="${job.snapshotId != null ? job.snapshotId : job.message}"></td></tr>
+      <tr th:if="${#lists.isEmpty(backups)}"><td colspan="6">No backup jobs yet.</td></tr>
+    </tbody></table></div>
+  </section>
+  <section><div class="section-heading"><h2>Recent game log</h2><form method="get" th:action="@{/}"><select name="log"><option th:each="name : ${logNames}" th:value="${name}" th:text="${name}" th:selected="${name == selectedLog}"></option></select><button type="submit">View</button></form></div><pre th:text="${logText}"></pre></section>
+</main></body></html>

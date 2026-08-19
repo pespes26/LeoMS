@@ -4,17 +4,17 @@
 worlds:
     #Properties for Scania 0
   - flag: 0
-    server_message: Welcome to Scania!
-    event_message: Scania!
-    why_am_i_recommended: Welcome to Scania!
-    channels: 3
-    exp_rate: 10
-    meso_rate: 10
-    drop_rate: 10
-    boss_drop_rate: 10                      #NOTE: Boss drop rate OVERRIDES common drop rate, for bosses-only.
-    quest_rate: 5                           #Multiplier for Exp & Meso gains when completing a quest. Only available when USE_QUEST_RATE is true. Stacks with server Exp & Meso rates.
-    fishing_rate: 10                        #Multiplier for success likelihood on meso thrown during fishing.
-    travel_rate: 10                         #Means of transportation rides/departs using 1/N of the default time.
+    server_message: Welcome to LeoMS!
+    event_message: LeoMS - friends only
+    why_am_i_recommended: Welcome to LeoMS!
+    channels: 2
+    exp_rate: 2
+    meso_rate: 1
+    drop_rate: 1
+    boss_drop_rate: 1                      #NOTE: Boss drop rate OVERRIDES common drop rate, for bosses-only.
+    quest_rate: 1                           #Multiplier for Exp & Meso gains when completing a quest. Only available when USE_QUEST_RATE is true. Stacks with server Exp & Meso rates.
+    fishing_rate: 1                         #Multiplier for success likelihood on meso thrown during fishing.
+    travel_rate: 1                          #Means of transportation rides/departs using 1/N of the default time.
 
     #Properties for Bera 1
   - flag: 0
@@ -161,8 +161,8 @@ server:
     #Database Configuration
     DB_URL_FORMAT: "jdbc:mysql://%s:3306/cosmic" # If the docker ENV for DB_HOST is anything but "db", this string format should be changed from 3306 to 3307 (or whichever port it was changed to in docker) 
     DB_HOST: "localhost" 
-    DB_USER: "root"
-    DB_PASS: ""
+    DB_USER: "leoms_game"                 # Docker overrides this with DB_USER.
+    DB_PASS: "not-used-in-compose"        # Docker requires DB_PASSWORD_FILE; never put a secret here.
     INIT_CONNECTION_POOL_TIMEOUT: 90    # Seconds
 
     #Login Configuration
@@ -184,7 +184,7 @@ server:
     BYPASS_PIC_EXPIRATION: 20           #Enables PIC bypass, which will remain active for that account by that client machine for N minutes. Set 0 to disable.
     BYPASS_PIN_EXPIRATION: 15           #Enables PIN bypass, which will remain active for that account by that client machine for N minutes. Set 0 to disable.
 
-    AUTOMATIC_REGISTER: true        #Automatically register players when they login with a nonexistent username.
+    AUTOMATIC_REGISTER: false       #Accounts are created only through the private admin panel.
     BCRYPT_MIGRATION: true          #Performs a migration from old SHA-1 and SHA-512 password to bcrypt.
     COLLECTIVE_CHARSLOT: false      #Available character slots are contabilized globally rather than per world server.
     DETERRED_MULTICLIENT: false     #Enables detection of multi-client and suspicious remote IP on the login system.
@@ -196,8 +196,8 @@ server:
     LOGIN_ATTEMPT_DURATION: 120         #Period in seconds the login attempt remains registered on the system.
 
     #Ip Configuration
-    HOST: 127.0.0.1                 #WAN IPv4 address
-    LANHOST: 127.0.0.1              #LAN IPv4 address
+    HOST: 127.0.0.1                 #Overridden by LEOMS_ADVERTISED_HOST in Docker.
+    LANHOST: 127.0.0.1              #Overridden by LEOMS_ADVERTISED_HOST in Docker.
     LOCALHOST: 127.0.0.1            #Loopback IPv4 address
     GMSERVER: false
 

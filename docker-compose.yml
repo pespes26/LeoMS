@@ -1,32 +1,194 @@
-version: '3'
+name: leoms
+
+x-runtime-profiles: &runtime-profiles [local, vps]
+
 services:
-  maplestory:
-    build: .
-    depends_on:
-      - db
-    ports:
-      # Login server
-      - "8484:8484"
-      # Channels.
-      # Format: WWCC, where WW is 75 plus the world number and CC is 75 plus the channel number (both zero indexed).
-      # In this case, world 1 channels 1-3.
-      - "7575-7577:7575-7577"
-    volumes:
-      # Config changes can be reloaded without rebuilding the image.
-      # Still requires a redeployment as they're sourced on startup.
-      - ./config.yaml:/opt/server/config.yaml
-      - ./scripts:/opt/server/scripts
-      - ./wz:/opt/server/wz
-    environment:
-      DB_HOST: "db" ## Remember if this is present it will OVERRIDE the host in the config.yaml, if you put here anything other than db, you'll need to change the config.yaml jdbc string to port 3307, and not port 3306
-    
   db:
-    image: mysql:8.4.0
+    profiles: *runtime-profiles
+    build:
+      context: ./database
+    image: leoms-mysql:8.4
+    restart: unless-stopped
     environment:
-      MYSQL_DATABASE: "cosmic"
-      MYSQL_ROOT_PASSWORD: ""
-      MYSQL_ALLOW_EMPTY_PASSWORD: yes
-    ports:
-      - "3307:3306"
+      MYSQL_DATABASE: cosmic
+      MYSQL_USER: leoms_game
+      MYSQL_PASSWORD_FILE: /run/secrets/mysql_game_password
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/mysql_root_password
+      LEOMS_ADMIN_PASSWORD_FILE: /run/secrets/mysql_admin_password
+      LEOMS_BACKUP_PASSWORD_FILE: /run/secrets/mysql_backup_password
+    secrets:
+      - mysql_root_password
+      - mysql_game_password
+      - mysql_admin_password
+      - mysql_backup_password
     volumes:
-      - ./database/docker-db-data:/var/lib/mysql
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p\"$$(cat /run/secrets/mysql_root_password)\" --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
+    networks:
+      - backend
+
+  maplestory:
+    profiles: *runtime-profiles
+    build:
+      context: .
+    image: leoms-game:fec53bc
+    restart: unless-stopped
+    init: true
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_USER: leoms_game
+      DB_PASSWORD_FILE: /run/secrets/mysql_game_password
+      LEOMS_ADVERTISED_HOST: "${TAILSCALE_IP}"
+    secrets:
+      - mysql_game_password
+    volumes:
+      - ./config.yaml:/opt/server/config.yaml:ro
+      - ./scripts:/opt/server/scripts:ro
+      - ./wz:/opt/server/wz:ro
+      - game-logs:/opt/server/logs
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 3 bash -c '</dev/tcp/127.0.0.1/8484'"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 90s
+    networks:
+      - backend
+
+  admin:
+    profiles: *runtime-profiles
+    build:
+      context: ./admin
+    image: leoms-admin:local
+    restart: unless-stopped
+    init: true
+    depends_on:
+      maplestory:
+        condition: service_healthy
+    environment:
+      LEOMS_DB_URL: jdbc:mysql://db:3306/cosmic
+      LEOMS_DB_USER: leoms_admin
+      LEOMS_DB_PASSWORD_FILE: /run/secrets/mysql_admin_password
+      LEOMS_ADMIN_USERNAME: "${LEOMS_ADMIN_USERNAME:-owner}"
+      LEOMS_ADMIN_PASSWORD_HASH_FILE: /run/secrets/admin_password_hash
+      LEOMS_LOG_DIRECTORY: /var/log/leoms
+      SERVER_FORWARD_HEADERS_STRATEGY: native
+    secrets:
+      - mysql_admin_password
+      - admin_password_hash
+    volumes:
+      - game-logs:/var/log/leoms:ro
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:9090/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - backend
+
+  gateway:
+    profiles: *runtime-profiles
+    build:
+      context: ./gateway
+    image: leoms-gateway:local
+    restart: unless-stopped
+    init: true
+    depends_on:
+      maplestory:
+        condition: service_healthy
+      admin:
+        condition: service_healthy
+    ports:
+      - "${LEOMS_BIND_IP:?set LEOMS_BIND_IP to 127.0.0.1 on macOS or TAILSCALE_IP on Linux}:8484:8484"
+      - "${LEOMS_BIND_IP:?set LEOMS_BIND_IP to 127.0.0.1 on macOS or TAILSCALE_IP on Linux}:7575:7575"
+      - "${LEOMS_BIND_IP:?set LEOMS_BIND_IP to 127.0.0.1 on macOS or TAILSCALE_IP on Linux}:7576:7576"
+      # Deliberately loopback-only. Publish with Tailscale Serve HTTPS.
+      - "127.0.0.1:${LEOMS_ADMIN_LOCAL_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "haproxy", "-c", "-f", "/usr/local/etc/haproxy/haproxy.cfg"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    networks:
+      - backend
+      - ingress
+
+  backup:
+    profiles: *runtime-profiles
+    build:
+      context: ./ops/backup
+    image: leoms-backup:local
+    restart: unless-stopped
+    init: true
+    depends_on:
+      maplestory:
+        condition: service_healthy
+    environment:
+      MYSQL_HOST: db
+      MYSQL_DATABASE: cosmic
+      MYSQL_USER: leoms_backup
+      MYSQL_PASSWORD_FILE: /run/secrets/mysql_backup_password
+      RESTIC_REPOSITORY: "${RESTIC_REPOSITORY:?set RESTIC_REPOSITORY to the private S3-compatible repository}"
+      RESTIC_PASSWORD_FILE: /run/secrets/restic_password
+      AWS_ACCESS_KEY_ID_FILE: /run/secrets/s3_access_key
+      AWS_SECRET_ACCESS_KEY_FILE: /run/secrets/s3_secret_key
+      AWS_DEFAULT_REGION: "${AWS_DEFAULT_REGION:-us-east-1}"
+      BACKUP_INTERVAL_SECONDS: "21600"
+      RESTIC_SNAPSHOT: "${RESTIC_SNAPSHOT:-latest}"
+    secrets:
+      - mysql_backup_password
+      - restic_password
+      - s3_access_key
+      - s3_secret_key
+    volumes:
+      - backup-cache:/var/lib/leoms-backup
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/backup-worker", "healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    networks:
+      - backend
+      - egress
+
+networks:
+  backend:
+    internal: true
+  # The gateway is the sole bridge between host-published ports and backend services.
+  ingress:
+  # Only the backup worker gets outbound access, for the S3-compatible restic repository.
+  egress:
+
+volumes:
+  mysql-data:
+  game-logs:
+  backup-cache:
+
+secrets:
+  mysql_root_password:
+    file: ./secrets/mysql_root_password
+  mysql_game_password:
+    file: ./secrets/mysql_game_password
+  mysql_admin_password:
+    file: ./secrets/mysql_admin_password
+  mysql_backup_password:
+    file: ./secrets/mysql_backup_password
+  admin_password_hash:
+    file: ./secrets/admin_password_hash
+  restic_password:
+    file: ./secrets/restic_password
+  s3_access_key:
+    file: ./secrets/s3_access_key
+  s3_secret_key:
+    file: ./secrets/s3_secret_key

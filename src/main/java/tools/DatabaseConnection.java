@@ -10,6 +10,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.Duration;
@@ -56,8 +59,8 @@ public class DatabaseConnection {
         HikariConfig config = new HikariConfig();
 
         config.setJdbcUrl(getDbUrl());
-        config.setUsername(YamlConfig.config.server.DB_USER);
-        config.setPassword(YamlConfig.config.server.DB_PASS);
+        config.setUsername(environmentOrDefault("DB_USER", YamlConfig.config.server.DB_USER));
+        config.setPassword(secretFileOrDefault("DB_PASSWORD_FILE", YamlConfig.config.server.DB_PASS));
 
         final int initFailTimeoutSeconds = YamlConfig.config.server.INIT_CONNECTION_POOL_TIMEOUT;
         config.setInitializationFailTimeout(SECONDS.toMillis(initFailTimeoutSeconds));
@@ -69,6 +72,31 @@ public class DatabaseConnection {
         config.addDataSourceProperty("prepStmtCacheSqlLimit", 2048);
 
         return config;
+    }
+
+    static String environmentOrDefault(String name, String fallback) {
+        String value = System.getenv(name);
+        return value == null || value.isBlank() ? fallback : value;
+    }
+
+    static String secretFileOrDefault(String name, String fallback) {
+        String path = System.getenv(name);
+        if (path == null || path.isBlank()) {
+            return fallback;
+        }
+        return readRequiredSecret(Path.of(path), name);
+    }
+
+    static String readRequiredSecret(Path path, String settingName) {
+        try {
+            String value = Files.readString(path).strip();
+            if (value.isEmpty()) {
+                throw new IllegalStateException(settingName + " points to an empty secret");
+            }
+            return value;
+        } catch (IOException e) {
+            throw new IllegalStateException("Unable to read secret file configured by " + settingName, e);
+        }
     }
 
     /**

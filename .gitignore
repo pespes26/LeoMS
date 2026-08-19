@@ -3,6 +3,15 @@
 !.idea/codeStyles/
 *.iml
 /target
+/admin/target
+
+# LeoMS runtime secrets and local operator configuration
+/secrets/*
+!/secrets/README.md
+/.env
+/.env.local
+/backups/
+/restore-tests/
 
 # build files
 /build/

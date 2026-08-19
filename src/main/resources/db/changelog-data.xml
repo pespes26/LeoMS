@@ -47,8 +47,4 @@
         <sqlFile path="db/data/152-drop-data.sql"/>
     </changeSet>
 
-    <changeSet id="161" author="Ponk">
-        <sqlFile path="db/data/161-admin-data.sql"/>
-    </changeSet>
-
 </databaseChangeLog>

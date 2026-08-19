@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Create account — LeoMS</title><link rel="stylesheet" th:href="@{/css/admin.css}"></head>
+<body><header><a class="brand" th:href="@{/}">LeoMS admin</a><nav><a th:href="@{/accounts}">Accounts</a></nav></header><main class="narrow"><h1>Create player account</h1><p class="muted">The password is bcrypt-hashed immediately. Plaintext credentials are never written to the audit log.</p>
+<form th:action="@{/accounts}" th:object="${form}" method="post">
+<label>Username<input th:field="*{username}" autocomplete="off" required><small th:errors="*{username}"></small></label>
+<label>Password<input type="password" th:field="*{password}" autocomplete="new-password" required><small th:errors="*{password}"></small></label>
+<label>PIN<input type="password" inputmode="numeric" th:field="*{pin}" autocomplete="new-password" required><small th:errors="*{pin}"></small></label>
+<label>PIC<input type="password" inputmode="numeric" th:field="*{pic}" autocomplete="new-password" required><small th:errors="*{pic}"></small></label>
+<button type="submit">Create account</button></form></main></body></html>
